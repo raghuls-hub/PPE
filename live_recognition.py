@@ -27,6 +27,8 @@ from services.face_service import FaceService
 from services.ppe_service import PPEService, PPEDetection
 from services.attendance_service import AttendanceService
 from services.admin_service import AdminService
+from services.fire_service import FireService, FireDetection
+from services.fall_service import FallService, FallDetection
 
 
 # ── Color constants (BGR) ────────────────────────────────────────────────────
@@ -52,14 +54,19 @@ class LiveFaceRecognition:
       - Employee registration via webcam
     """
 
-    def __init__(self, cfg: Optional[Config] = None):
+    def __init__(
+        self,
+        cfg: Optional[Config] = None,
+        enable_fire: bool = True,
+        enable_fall: bool = True,
+    ):
         self.cfg = cfg or get_config('development')
         ensure_directories(self.cfg)
 
         # ── Database ──────────────────────────────────────────────────────────
         self.db = db_connection.connect(self.cfg.MONGODB_URI, self.cfg.DB_NAME)
 
-        # ── Services ──────────────────────────────────────────────────────────
+        # ── Core Services (always active) ─────────────────────────────────────
         self.face_service = FaceService()
         self.ppe_service = PPEService(
             model_path=self.cfg.MODEL_PATH,
@@ -72,17 +79,51 @@ class LiveFaceRecognition:
         self.admin_service = AdminService(self.db)
         self.report_generator = ReportGenerator(self.cfg.REPORTS_FOLDER)
 
+        # ── Fire Detection (video mode only) ──────────────────────────────────
+        self.fire_service: Optional[FireService] = None
+        if enable_fire and self.cfg.FIRE_DETECTION_ENABLED:
+            try:
+                self.fire_service = FireService(
+                    model_path=self.cfg.FIRE_MODEL_PATH,
+                    confidence_threshold=self.cfg.FIRE_CONFIDENCE_THRESHOLD,
+                    iou_threshold=self.cfg.FIRE_IOU_THRESHOLD,
+                    alert_cooldown_sec=self.cfg.FIRE_ALERT_COOLDOWN_SEC,
+                )
+            except Exception as e:
+                print(f"⚠️  Fire detection disabled (model load failed): {e}")
+
+        # ── Fall Detection (video mode only) ──────────────────────────────────
+        self.fall_service: Optional[FallService] = None
+        if enable_fall and self.cfg.FALL_DETECTION_ENABLED:
+            try:
+                self.fall_service = FallService(
+                    model_path=self.cfg.FALL_MODEL_PATH,
+                    confidence_threshold=self.cfg.FALL_CONFIDENCE_THRESHOLD,
+                    iou_threshold=self.cfg.FALL_IOU_THRESHOLD,
+                    fall_frame_threshold=self.cfg.FALL_FRAME_THRESHOLD,
+                    alert_cooldown_frames=self.cfg.FALL_ALERT_COOLDOWN_FRAMES,
+                )
+            except Exception as e:
+                print(f"⚠️  Fall detection disabled (model load failed): {e}")
+
         # ── Load known employee faces ─────────────────────────────────────────
         self._load_employees()
 
         # ── State ─────────────────────────────────────────────────────────────
         self._frame_counter: int = 0
         self._last_ppe_results: List[PPEDetection] = []
+        self._last_fire_results: List[FireDetection] = []
+        self._last_fall_results: List[FallDetection] = []
+        self._fall_alert_active: bool = False
 
         print("✅ Smart PPE Attendance System initialized")
-        print(f"   Model  : {self.cfg.MODEL_PATH}")
-        print(f"   DB     : {self.cfg.MONGODB_URI}/{self.cfg.DB_NAME}")
-        print(f"   Cooldown: {self.cfg.ATTENDANCE_COOLDOWN_MINUTES} min")
+        print(f"   PPE Model   : {self.cfg.MODEL_PATH}")
+        if self.fire_service:
+            print(f"   Fire Model  : {self.cfg.FIRE_MODEL_PATH}")
+        if self.fall_service:
+            print(f"   Fall Model  : {self.cfg.FALL_MODEL_PATH}")
+        print(f"   DB          : {self.cfg.MONGODB_URI}/{self.cfg.DB_NAME}")
+        print(f"   Cooldown    : {self.cfg.ATTENDANCE_COOLDOWN_MINUTES} min")
 
     # ──────────────────────────── Data Loading ────────────────────────────────
 
@@ -201,6 +242,21 @@ class LiveFaceRecognition:
 
         # Draw only admin-selected PPE bounding boxes (+ their NO-* counterparts)
         self.ppe_service.draw_ppe_boxes(frame, ppe_detections, required_ppe=required_ppe)
+
+        # ── Step 1b: Fire Detection (every N frames, same cadence as PPE) ────
+        if self.fire_service is not None:
+            if self._frame_counter % self.cfg.PROCESS_EVERY_N_FRAMES == 0:
+                self._last_fire_results = self.fire_service.detect_fire(frame)
+                if self._last_fire_results:
+                    self.fire_service.log_detections(self._last_fire_results, source=source)
+            self.fire_service.annotate_frame(frame, self._last_fire_results)
+
+        # ── Step 1c: Fall Detection (every N frames) ────────────────────────────
+        if self.fall_service is not None:
+            if self._frame_counter % self.cfg.PROCESS_EVERY_N_FRAMES == 0:
+                self._last_fall_results = self.fall_service.detect_fall(frame)
+            self._fall_alert_active = self.fall_service.update_fall_state(self._last_fall_results)
+            self.fall_service.annotate_frame(frame, self._last_fall_results, self._fall_alert_active)
 
         # ── Step 2: Face Detection ────────────────────────────────────────────
         faces = self.face_service.detect_faces(
@@ -354,22 +410,59 @@ class LiveFaceRecognition:
         """Draw top HUD panel with stats."""
         h, w = frame.shape[:2]
 
-        # Semi-transparent header bar
+        # Panel height grows for each active monitoring service
+        hud_h = 75
+        if self.fire_service:
+            hud_h += 20
+        if self.fall_service:
+            hud_h += 20
+
         overlay = frame.copy()
-        cv2.rectangle(overlay, (0, 0), (w, 75), (15, 15, 15), -1)
+        cv2.rectangle(overlay, (0, 0), (w, hud_h), (15, 15, 15), -1)
         cv2.addWeighted(overlay, 0.75, frame, 0.25, 0, frame)
 
-        # Stats line
+        # Row 1: FPS / Faces / Known / Unknown
         cv2.putText(frame, f"FPS: {fps:.1f}", (10, 28), FONT, 0.7, COLOR_WHITE, 2, cv2.LINE_AA)
         cv2.putText(frame, f"Faces: {num_faces}", (130, 28), FONT, 0.7, COLOR_WHITE, 2, cv2.LINE_AA)
         cv2.putText(frame, f"Known: {num_known}", (270, 28), FONT, 0.7, COLOR_GREEN, 2, cv2.LINE_AA)
         cv2.putText(frame, f"Unknown: {num_unknown}", (400, 28), FONT, 0.7, COLOR_YELLOW, 2, cv2.LINE_AA)
 
-        # Required PPE line
+        # Row 2: Required PPE
         ppe_str = "Required PPE: " + (", ".join(required_ppe) if required_ppe else "None")
-        cv2.putText(frame, ppe_str, (10, 58), FONT, 0.55, (180, 220, 255), 1, cv2.LINE_AA)
+        cv2.putText(frame, ppe_str, (10, 54), FONT, 0.52, (180, 220, 255), 1, cv2.LINE_AA)
+
+        row_y = 72
+
+        # Row 3: Fire status (video mode only)
+        if self.fire_service is not None:
+            fd = self._last_fire_results
+            if fd:
+                has_f = any(d.is_fire for d in fd)
+                fire_str = (f"FIRE DETECTED ({len(fd)} region{'s' if len(fd)>1 else ''})" if has_f
+                            else f"SMOKE DETECTED ({len(fd)} region{'s' if len(fd)>1 else ''})")
+                fire_col = (0, 80, 255) if has_f else (120, 180, 255)
+            else:
+                fire_str = "Fire: CLEAR"
+                fire_col = (0, 200, 100)
+            cv2.putText(frame, fire_str, (10, row_y), FONT, 0.50, fire_col, 1, cv2.LINE_AA)
+            row_y += 20
+
+        # Row 4: Fall status (video mode only)
+        if self.fall_service is not None:
+            cons = self.fall_service.consecutive_fall_frames
+            if self._fall_alert_active:
+                fall_str = "FALL ALERT ACTIVE"
+                fall_col = (0, 60, 255)
+            elif cons > 0:
+                fall_str = f"Fall: monitoring... ({cons}/{self.cfg.FALL_FRAME_THRESHOLD} frames)"
+                fall_col = (0, 165, 255)
+            else:
+                fall_str = "Fall: CLEAR"
+                fall_col = (0, 200, 100)
+            cv2.putText(frame, fall_str, (10, row_y), FONT, 0.50, fall_col, 1, cv2.LINE_AA)
 
         # Controls
+        h, w = frame.shape[:2]
         controls = "q:Quit  r:Reload  n:Register  s:Screenshot  e:Export Report"
         cv2.putText(frame, controls, (10, h - 10), FONT, 0.45, (160, 160, 160), 1, cv2.LINE_AA)
 
@@ -448,7 +541,10 @@ class LiveFaceRecognition:
                 frame_count = 0
 
             # ── Draw HUD ──────────────────────────────────────────────────────
-            self._draw_info_panel(frame, fps, num_faces, num_known, num_unknown, required_ppe)
+            self._draw_info_panel(
+                frame, fps, num_faces, num_known, num_unknown,
+                required_ppe,
+            )
 
             cv2.imshow(WINDOW_TITLE, frame)
 

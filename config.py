@@ -20,6 +20,8 @@ class Config:
     # ── Paths ─────────────────────────────────────────────────────────────────
     BASE_DIR: str = os.path.dirname(os.path.abspath(__file__))
     MODEL_PATH: str = os.path.join(BASE_DIR, "best.pt")
+    FIRE_MODEL_PATH: str = os.path.join(BASE_DIR, "hf_firedetection.pt")
+    FALL_MODEL_PATH: str = os.path.join(BASE_DIR, "fall_detection.pt")
     FACES_FOLDER: str = os.path.join(BASE_DIR, "faces")
     SNAPSHOTS_FOLDER: str = os.path.join(BASE_DIR, "snapshots")
     REPORTS_FOLDER: str = os.path.join(BASE_DIR, "reports")
@@ -33,6 +35,19 @@ class Config:
     # ── PPE Detection ─────────────────────────────────────────────────────────
     PPE_CONFIDENCE_THRESHOLD: float = float(os.getenv("PPE_CONFIDENCE_THRESHOLD", "0.45"))
     PPE_IOU_THRESHOLD: float = float(os.getenv("PPE_IOU_THRESHOLD", "0.45"))
+
+    # ── Fire Detection ────────────────────────────────────────────────────────
+    FIRE_DETECTION_ENABLED: bool = os.getenv("FIRE_DETECTION_ENABLED", "true").lower() == "true"
+    FIRE_CONFIDENCE_THRESHOLD: float = float(os.getenv("FIRE_CONFIDENCE_THRESHOLD", "0.40"))
+    FIRE_IOU_THRESHOLD: float = float(os.getenv("FIRE_IOU_THRESHOLD", "0.45"))
+    FIRE_ALERT_COOLDOWN_SEC: float = float(os.getenv("FIRE_ALERT_COOLDOWN_SEC", "5.0"))
+
+    # ── Fall Detection ────────────────────────────────────────────────────────
+    FALL_DETECTION_ENABLED: bool = os.getenv("FALL_DETECTION_ENABLED", "true").lower() == "true"
+    FALL_CONFIDENCE_THRESHOLD: float = float(os.getenv("FALL_CONFIDENCE_THRESHOLD", "0.50"))
+    FALL_IOU_THRESHOLD: float = float(os.getenv("FALL_IOU_THRESHOLD", "0.45"))
+    FALL_FRAME_THRESHOLD: int = int(os.getenv("FALL_FRAME_THRESHOLD", "10"))    # consecutive frames
+    FALL_ALERT_COOLDOWN_FRAMES: int = int(os.getenv("FALL_ALERT_COOLDOWN_FRAMES", "30"))  # frames alert stays visible
 
     # ── Attendance ─────────────────────────────────────────────────────────────
     ATTENDANCE_COOLDOWN_MINUTES: int = int(os.getenv("ATTENDANCE_COOLDOWN_MINUTES", "5"))
