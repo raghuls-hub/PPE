@@ -1,1 +1,1 @@
-"""Utils package for PPE Attendance System."""
+"""utils/__init__.py"""

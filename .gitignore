@@ -1,0 +1,59 @@
+# ── Python ────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+.Python
+
+# ── Virtual environments ──────────────────────────────────────────
+venv/
+env/
+.venv/
+ENV/
+
+# ── Environment / secrets ─────────────────────────────────────────
+.env
+*.env
+!.env.example
+
+# ── ML model files ────────────────────────────────────────────────
+*.pt
+*.pth
+*.onnx
+*.engine
+*.tflite
+!PPE_detection.pt
+!fall_detection.pt
+!fire_detection.pt
+
+# ── Data / outputs ────────────────────────────────────────────────
+faces/
+snapshots/
+reports/
+runs/
+
+# ── SQLite (old, no longer used) ──────────────────────────────────
+*.db
+*.sqlite3
+
+# ── IDE ───────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ── Streamlit cache ───────────────────────────────────────────────
+.streamlit/secrets.toml
+
+# ── Logs ──────────────────────────────────────────────────────────
+*.log
+logs/
+
+# ── Temp / build ──────────────────────────────────────────────────
+dist/
+build/
+*.egg-info/
+.eggs/

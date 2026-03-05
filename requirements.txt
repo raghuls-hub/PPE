@@ -1,6 +1,23 @@
-opencv-python>=4.8.0
-ultralytics>=8.0.0
+# CCTV AI Admin Dashboard — Python Dependencies
+# Install: pip install -r requirements.txt
+
+# ── Core UI ────────────────────────────────────────────────────────
+streamlit>=1.32.0
+
+# ── Database ───────────────────────────────────────────────────────
 pymongo>=4.6.0
-numpy>=1.24.0
 python-dotenv>=1.0.0
-# Audio handled by built-in winsound (Windows) — no extra package needed
+
+# ── Computer Vision ────────────────────────────────────────────────
+opencv-python>=4.8.0
+opencv-contrib-python>=4.8.0
+
+# ── AI / YOLO ──────────────────────────────────────────────────────
+ultralytics>=8.0.0
+numpy>=1.24.0
+
+# ── Data ───────────────────────────────────────────────────────────
+pandas>=2.0.0
+
+# ── Image ──────────────────────────────────────────────────────────
+Pillow>=10.0.0
