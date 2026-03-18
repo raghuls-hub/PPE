@@ -16,9 +16,9 @@ from typing import Any, Dict, List, Optional
 import cv2
 import numpy as np
 
-# All imports are LOCAL — no parent path injection needed
 import config as cfg
 import db
+from utils.video_utils import convert_gdrive_url
 
 FALL_CLASSES = {"fall", "fallen"}
 FIRE_CLASSES = {"fire"}
@@ -105,6 +105,9 @@ class CameraMonitorThread(threading.Thread):
         _load_models()
 
         src = self.stream
+        if isinstance(src, str) and "drive.google.com" in src:
+            src = convert_gdrive_url(src)
+
         try:
             src = int(src)
         except (ValueError, TypeError):

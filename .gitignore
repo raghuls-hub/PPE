@@ -18,14 +18,14 @@ ENV/
 !.env.example
 
 # ── ML model files ────────────────────────────────────────────────
-*.pt
-*.pth
-*.onnx
-*.engine
-*.tflite
-!PPE_detection.pt
-!fall_detection.pt
-!fire_detection.pt
+# *.pt
+# *.pth
+# *.onnx
+# *.engine
+# *.tflite
+# !PPE_detection.pt
+# !fall_detection.pt
+# !fire_detection.pt
 
 # ── Data / outputs ────────────────────────────────────────────────
 faces/

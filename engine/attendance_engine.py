@@ -18,6 +18,7 @@ import numpy as np
 
 import config as cfg
 import db
+from utils.video_utils import convert_gdrive_url
 
 from services.face_service import FaceService
 from services.ppe_service  import PPEService
@@ -85,6 +86,9 @@ class AttendanceThread(threading.Thread):
         self._ppe_service = _get_ppe_service()
 
         src = self.stream
+        if isinstance(src, str) and "drive.google.com" in src:
+            src = convert_gdrive_url(src)
+
         try:
             src = int(src)
         except (ValueError, TypeError):

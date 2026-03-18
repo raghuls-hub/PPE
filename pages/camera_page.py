@@ -12,7 +12,7 @@ def render():
 
     # ── Add Camera Form ────────────────────────────────────────────────────────
     with st.expander("➕ Add New Camera", expanded=True):
-        st.info("**Tip for IP Webcam:** The root URL (e.g., `http://192.168.1.10:8080`) only loads the webpage. You must use the MJPEG endpoint for the system to read the camera feed (e.g., `http://192.168.1.10:8080/video` or `http://192.168.1.10:8080/stream.mjpeg`).")
+        st.info("**Tip for IP Webcam & Testing:** Use the MJPEG endpoint for live feeds (e.g., `/stream.mjpeg`). For testing, you can also paste a **Google Drive shareable link** to a video file, and the system will automatically stream it!")
         
         if st.button("💻 Use Integrated Webcam (Index 0)"):
             st.session_state["pending_stream_url"] = "0"
