@@ -47,17 +47,18 @@ def _load_models():
         except Exception as e:
             print(f"⚠️  PPE model failed: {e}")
 
-        try:
-            _fire_service = FireService(cfg.FIRE_MODEL_PATH)
-            print("✅ Shared Fire model loaded")
-        except Exception as e:
-            print(f"⚠️  Fire model failed: {e}")
+        # --- TEMPORARILY DISABLED FOR FASTER TESTING ---
+        # try:
+        #     _fire_service = FireService(cfg.FIRE_MODEL_PATH)
+        #     print("✅ Shared Fire model loaded")
+        # except Exception as e:
+        #     print(f"⚠️  Fire model failed: {e}")
 
-        try:
-            _fall_service = FallService(cfg.FALL_MODEL_PATH)
-            print("✅ Shared Fall model loaded")
-        except Exception as e:
-            print(f"⚠️  Fall model failed: {e}")
+        # try:
+        #     _fall_service = FallService(cfg.FALL_MODEL_PATH)
+        #     print("✅ Shared Fall model loaded")
+        # except Exception as e:
+        #     print(f"⚠️  Fall model failed: {e}")
 
         _models_loaded = True
 
@@ -169,24 +170,12 @@ class CameraMonitorThread(threading.Thread):
 
                 ppe_viol = 0 if ppe_ok else ppe_viol + 1
 
-                # ── Fire Detection ───────────────────────────────────────────
+                # ── Fire Detection (Disabled) ───────────────────────────────────────────
                 fire_det = False
-                if _fire_service:
-                    with _model_lock:
-                        fire_dets = _fire_service.detect_fire(frame)
-                    _fire_service.draw_fire_boxes(frame, fire_dets)
-                    fire_det = _fire_service.has_fire(fire_dets)
-                fire_f = fire_f + 1 if fire_det else 0
+                fire_f = 0
 
-                # ── Fall Detection ───────────────────────────────────────────
+                # ── Fall Detection (Disabled) ───────────────────────────────────────────
                 fall_alert = False
-                if _fall_service and _fall_state_obj:
-                    with _model_lock:
-                        fall_dets = _fall_service.detect_fall(frame)
-                    _fall_service.draw_fall_boxes(frame, fall_dets)
-                    fall_alert = _fall_state_obj.update_fall_state(fall_dets)
-                    if fall_alert:
-                        _fall_service.draw_fall_alert(frame, True)
 
                 # ── Alert states ─────────────────────────────────────────────
                 ppe_alert  = ppe_viol >= cfg.PPE_VIOLATION_THRESHOLD
