@@ -214,5 +214,5 @@ def render():
                     frame = state.get("frame")
                     if frame is not None:
                         # frame is already JPEG encoded bytes from monitor_engine
-                        ph.image(frame, use_container_width=True)
+                        ph.image(frame, width="stretch")
             time.sleep(0.05)

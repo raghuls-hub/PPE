@@ -325,7 +325,7 @@ def _render_live_attendance():
                 frame = state.get("frame")
                 if frame is not None:
                     # frame is already JPEG encoded bytes
-                    frame_ph.image(frame, use_container_width=True)
+                    frame_ph.image(frame, width="stretch")
             time.sleep(0.05)
 
 
