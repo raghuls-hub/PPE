@@ -104,6 +104,7 @@ class CameraMonitorThread(threading.Thread):
     def run(self):
         _load_models()
 
+        src = self.stream
         print(f"[ENGINE] Thread starting for {self.cam_name} with source: {src}")
         cap = safe_open_video_capture(src)
         if not cap or not cap.isOpened():
