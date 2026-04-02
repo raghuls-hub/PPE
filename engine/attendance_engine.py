@@ -18,7 +18,7 @@ import numpy as np
 
 import config as cfg
 import db
-from utils.video_utils import convert_gdrive_url
+from utils.video_utils import convert_gdrive_url, safe_open_video_capture
 
 from services.face_service import FaceService
 from services.ppe_service  import PPEService
@@ -86,16 +86,8 @@ class AttendanceThread(threading.Thread):
         self._ppe_service = _get_ppe_service()
 
         src = self.stream
-        if isinstance(src, str) and "drive.google.com" in src:
-            src = convert_gdrive_url(src)
-
-        try:
-            src = int(src)
-        except (ValueError, TypeError):
-            pass
-
-        cap = cv2.VideoCapture(src, cv2.CAP_FFMPEG)
-        if not cap.isOpened():
+        cap = safe_open_video_capture(src)
+        if not cap or not cap.isOpened():
             self._upd(status="error", error=f"Cannot open: {self.stream}")
             return
 
@@ -227,13 +219,8 @@ def capture_face_samples(stream_url: str, progress_cb=None) -> Optional[List]:
     face_svc = FaceService()
 
     src = stream_url
-    try:
-        src = int(src)
-    except (ValueError, TypeError):
-        pass
-
-    cap = cv2.VideoCapture(src)
-    if not cap.isOpened():
+    cap = safe_open_video_capture(src)
+    if not cap or not cap.isOpened():
         return None
 
     collected: List[list] = []

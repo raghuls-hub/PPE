@@ -18,7 +18,7 @@ import numpy as np
 
 import config as cfg
 import db
-from utils.video_utils import convert_gdrive_url
+from utils.video_utils import convert_gdrive_url, safe_open_video_capture
 
 FALL_CLASSES = {"fall", "fallen"}
 FIRE_CLASSES = {"fire"}
@@ -104,18 +104,9 @@ class CameraMonitorThread(threading.Thread):
     def run(self):
         _load_models()
 
-        src = self.stream
-        if isinstance(src, str) and "drive.google.com" in src:
-            src = convert_gdrive_url(src)
-
-        try:
-            src = int(src)
-        except (ValueError, TypeError):
-            pass
-
         print(f"[ENGINE] Thread starting for {self.cam_name} with source: {src}")
-        cap = cv2.VideoCapture(src, cv2.CAP_FFMPEG)
-        if not cap.isOpened():
+        cap = safe_open_video_capture(src)
+        if not cap or not cap.isOpened():
             print(f"[ENGINE] Failed to open VideoCapture for {self.stream}")
             self._upd(status="error", error=f"Cannot open: {self.stream}")
             return
@@ -148,9 +139,9 @@ class CameraMonitorThread(threading.Thread):
             if not ret:
                 print(f"[ENGINE] Warning: cap.read() failed for {self.cam_name}. Retrying in 1s...")
                 time.sleep(1)
-                cap.release()
-                cap = cv2.VideoCapture(src, cv2.CAP_FFMPEG)
-                cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+                if cap: cap.release()
+                cap = safe_open_video_capture(src)
+                if cap: cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
                 continue
 
             frame_n += 1

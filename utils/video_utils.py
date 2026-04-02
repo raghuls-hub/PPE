@@ -62,3 +62,66 @@ def convert_gdrive_url(url: str) -> str:
     except Exception as e:
         print(f"[VIDEO] Drive URL resolve failed: {e}, using fallback")
         return f"https://drive.google.com/uc?export=download&id={file_id}"
+
+
+def get_available_cameras() -> list:
+    """
+    Scans for available local camera indices (0-4).
+    On Linux, checks /dev/video*. On Windows/Mac, tries to open them briefly.
+    """
+    import os
+    import cv2
+    valid = []
+    
+    # Path-based check for Linux (fast, no console spam)
+    if os.path.exists("/dev"):
+        try:
+            for f in os.listdir("/dev"):
+                if f.startswith("video"):
+                    try:
+                        idx = int(f.replace("video", ""))
+                        valid.append(idx)
+                    except: pass
+            if valid: return sorted(list(set(valid)))
+        except: pass
+
+    # Fallback/Windows: Try opening (might trigger FFMPEG warnings)
+    for i in range(3):
+        cap = cv2.VideoCapture(i)
+        if cap.isOpened():
+            valid.append(i)
+            cap.release()
+    return valid
+
+
+def safe_open_video_capture(src: str | int):
+    """
+    Opens cv2.VideoCapture with detection for missing camera indices
+    to avoid console spam and handle failures gracefully.
+    """
+    import cv2
+    
+    # Resolve Drive URLs first
+    if isinstance(src, str) and "drive.google.com" in src:
+        src = convert_gdrive_url(src)
+        
+    # Convert string digit to int
+    try:
+        if isinstance(src, str) and src.isdigit():
+            src = int(src)
+    except: pass
+
+    # If it's a local camera index (int), verify it exists
+    if isinstance(src, int):
+        available = get_available_cameras()
+        if src not in available:
+            print(f"[VIDEO] ⚠️ Camera index {src} not found. Available: {available}")
+            return None
+
+    # Open with FFMPEG backend for reliability
+    cap = cv2.VideoCapture(src, cv2.CAP_FFMPEG)
+    if not cap.isOpened():
+        # Fallback without FFMPEG flag just in case
+        cap = cv2.VideoCapture(src)
+        
+    return cap if cap.isOpened() else None
