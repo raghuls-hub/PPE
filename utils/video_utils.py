@@ -69,12 +69,13 @@ def get_available_cameras() -> list:
     Scans for available local camera indices (0-4).
     On Linux, checks /dev/video*. On Windows/Mac, tries to open them briefly.
     """
+    import sys
     import os
     import cv2
     valid = []
     
     # Path-based check for Linux (fast, no console spam)
-    if os.path.exists("/dev"):
+    if sys.platform.startswith("linux") and os.path.exists("/dev"):
         try:
             for f in os.listdir("/dev"):
                 if f.startswith("video"):
@@ -82,7 +83,7 @@ def get_available_cameras() -> list:
                         idx = int(f.replace("video", ""))
                         valid.append(idx)
                     except: pass
-            if valid: return sorted(list(set(valid)))
+            return sorted(list(set(valid)))
         except: pass
 
     # Fallback/Windows: Try opening (might trigger FFMPEG warnings)
