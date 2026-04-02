@@ -18,9 +18,9 @@ def _extract_gdrive_id(url: str):
 
 def convert_gdrive_url(url: str) -> str:
     """
-    Resolves a Google Drive shareable link into a direct URL
-    that OpenCV/FFMPEG can stream without downloading.
-    Follows all redirects to get the final content URL.
+    Resolves a Google Drive link. OpenCV/FFMPEG often drops Drive HTTP streams 
+    due to missing cookies/headers. This securely downloads it to a temp cache 
+    file and returns the local path for flawless playback.
     """
     if not url or "drive.google.com" not in url:
         return url
@@ -29,6 +29,13 @@ def convert_gdrive_url(url: str) -> str:
     if not file_id:
         return url
 
+    import os, tempfile
+    cache_path = os.path.join(tempfile.gettempdir(), f"gdrive_cache_{file_id}.mp4")
+    if os.path.exists(cache_path) and os.path.getsize(cache_path) > 1024:
+        print(f"[VIDEO] Using cached local Drive video: {cache_path}")
+        return cache_path
+
+    print(f"[VIDEO] Downloading Google Drive video to cache (id: {file_id})...")
     try:
         import requests
         session = requests.Session()
@@ -37,9 +44,9 @@ def convert_gdrive_url(url: str) -> str:
         dl_url = f"https://drive.google.com/uc?export=download&id={file_id}"
         resp = session.get(dl_url, stream=True, allow_redirects=True, timeout=15)
 
-        # Large files: Drive shows a confirmation HTML page
+        # Handle virus scan prompt for large files
         if "text/html" in resp.headers.get("Content-Type", ""):
-            # Try confirm token
+            import re
             match = re.search(r'confirm=([0-9A-Za-z_-]+)', resp.text)
             if match:
                 confirm = match.group(1)
@@ -52,16 +59,22 @@ def convert_gdrive_url(url: str) -> str:
                 match = re.search(r'"downloadUrl":"([^"]+)"', resp.text)
                 if match:
                     import html as _html
-                    return _html.unescape(match.group(1))
+                    new_url = _html.unescape(match.group(1))
+                    resp = session.get(new_url, stream=True, allow_redirects=True, timeout=15)
 
-        # Return the final resolved URL after all redirects
-        final_url = resp.url
-        print(f"[VIDEO] Resolved Drive URL: {final_url[:80]}...")
-        return final_url
+        resp.raise_for_status()
+        
+        with open(cache_path, "wb") as f:
+            for chunk in resp.iter_content(chunk_size=8192):
+                if chunk: 
+                    f.write(chunk)
+                    
+        print(f"[VIDEO] Download complete. Streaming from {cache_path}")
+        return cache_path
 
     except Exception as e:
-        print(f"[VIDEO] Drive URL resolve failed: {e}, using fallback")
-        return f"https://drive.google.com/uc?export=download&id={file_id}"
+        print(f"[VIDEO] Drive URL download failed: {e}")
+        return url
 
 
 def get_available_cameras() -> list:
