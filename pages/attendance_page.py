@@ -319,14 +319,13 @@ def _render_live_attendance():
 
     # ── Live Rendering Loop ───────────────────────────────────────────────────
     if running and t and t.is_alive() and locals().get("frame_ph"):
-        import cv2
         while True:
             state = t.get_state()
             if state:
                 frame = state.get("frame")
                 if frame is not None:
-                    rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                    frame_ph.image(rgb, use_container_width=True)
+                    # frame is already JPEG encoded bytes
+                    frame_ph.image(frame, use_container_width=True)
             time.sleep(0.05)
 
 

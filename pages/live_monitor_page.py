@@ -207,14 +207,12 @@ def render():
 
     # ── Live Rendering Loop ───────────────────────────────────────────────────
     if locals().get("active_placeholders"):
-        import cv2
         while True:
             for cid, ph in active_placeholders:
                 state = engine.get_state(cid)
                 if state:
                     frame = state.get("frame")
                     if frame is not None:
-                        # Convert OpenCV BGR to RGB for Streamlit
-                        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                        ph.image(rgb, use_container_width=True)
+                        # frame is already JPEG encoded bytes from monitor_engine
+                        ph.image(frame, use_container_width=True)
             time.sleep(0.05)
