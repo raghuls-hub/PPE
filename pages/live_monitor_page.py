@@ -207,12 +207,13 @@ def render():
 
     # ── Live Rendering Loop ───────────────────────────────────────────────────
     if locals().get("active_placeholders"):
+        last_frames = {}
         while True:
             for cid, ph in active_placeholders:
                 state = engine.get_state(cid)
                 if state:
                     frame = state.get("frame")
-                    if frame is not None:
-                        # frame is already JPEG encoded bytes from monitor_engine
+                    if frame is not None and frame != last_frames.get(cid):
+                        last_frames[cid] = frame
                         ph.image(frame, width="stretch")
-            time.sleep(0.05)
+            time.sleep(0.03)

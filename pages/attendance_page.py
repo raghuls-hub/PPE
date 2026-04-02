@@ -319,14 +319,15 @@ def _render_live_attendance():
 
     # ── Live Rendering Loop ───────────────────────────────────────────────────
     if running and t and t.is_alive() and locals().get("frame_ph"):
+        last_frame = None
         while True:
             state = t.get_state()
             if state:
                 frame = state.get("frame")
-                if frame is not None:
-                    # frame is already JPEG encoded bytes
+                if frame is not None and frame != last_frame:
+                    last_frame = frame
                     frame_ph.image(frame, width="stretch")
-            time.sleep(0.05)
+            time.sleep(0.03)
 
 
 
