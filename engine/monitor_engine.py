@@ -41,11 +41,12 @@ def _load_models():
         from services.fire_service import FireService
         from services.fall_service import FallService
 
-        try:
-            _ppe_service = PPEService(cfg.PPE_MODEL_PATH)
-            print("✅ Shared PPE model loaded")
-        except Exception as e:
-            print(f"⚠️  PPE model failed: {e}")
+        # --- TEMPORARILY DISABLED FOR FASTER TESTING ---
+        # try:
+        #     _ppe_service = PPEService(cfg.PPE_MODEL_PATH)
+        #     print("✅ Shared PPE model loaded")
+        # except Exception as e:
+        #     print(f"⚠️  PPE model failed: {e}")
 
         # --- TEMPORARILY DISABLED FOR FASTER TESTING ---
         # try:
@@ -159,14 +160,14 @@ class CameraMonitorThread(threading.Thread):
                 required_ppe = db.get_required_ppe()
                 h, w = frame.shape[:2]
 
-                # ── PPE Detection ────────────────────────────────────────────
+                # ── PPE Detection (Disabled) ────────────────────────────────────────────
                 ppe_ok = True
-                if _ppe_service:
-                    with _model_lock:
-                        dets = _ppe_service.detect_ppe(frame)
-                    _ppe_service.draw_ppe_boxes(frame, dets, required_ppe)
-                    detected_cls = _ppe_service.get_detected_class_names(dets)
-                    ppe_ok, missing, _ = _ppe_service.verify_ppe(detected_cls, required_ppe)
+                # if _ppe_service:
+                #     with _model_lock:
+                #         dets = _ppe_service.detect_ppe(frame)
+                #     _ppe_service.draw_ppe_boxes(frame, dets, required_ppe)
+                #     detected_cls = _ppe_service.get_detected_class_names(dets)
+                #     ppe_ok, missing, _ = _ppe_service.verify_ppe(detected_cls, required_ppe)
 
                 ppe_viol = 0 if ppe_ok else ppe_viol + 1
 
