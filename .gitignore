@@ -16,7 +16,7 @@ ENV/
 .env
 *.env
 !.env.example
-
+/videos
 # ── ML model files ────────────────────────────────────────────────
 # *.pt
 # *.pth

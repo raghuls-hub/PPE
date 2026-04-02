@@ -115,6 +115,10 @@ def safe_open_video_capture(src: str | int):
     """
     import cv2
     
+    # Strip whitespace to prevent FFMPEG parsing errors (e.g. " https://...")
+    if isinstance(src, str):
+        src = src.strip()
+        
     # Resolve Drive URLs first
     if isinstance(src, str) and "drive.google.com" in src:
         src = convert_gdrive_url(src)
