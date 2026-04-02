@@ -114,13 +114,12 @@ class CameraMonitorThread(threading.Thread):
             pass
 
         print(f"[ENGINE] Thread starting for {self.cam_name} with source: {src}")
-        cap = cv2.VideoCapture(src)
+        cap = cv2.VideoCapture(src, cv2.CAP_FFMPEG)
         if not cap.isOpened():
             print(f"[ENGINE] Failed to open VideoCapture for {self.stream}")
             self._upd(status="error", error=f"Cannot open: {self.stream}")
             return
-            
-        # Optimization: Buffer size 1 to prevent lag
+
         cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
         print(f"[ENGINE] VideoCapture opened successfully for {self.cam_name}")
 
@@ -150,7 +149,7 @@ class CameraMonitorThread(threading.Thread):
                 print(f"[ENGINE] Warning: cap.read() failed for {self.cam_name}. Retrying in 1s...")
                 time.sleep(1)
                 cap.release()
-                cap = cv2.VideoCapture(src)
+                cap = cv2.VideoCapture(src, cv2.CAP_FFMPEG)
                 cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
                 continue
 

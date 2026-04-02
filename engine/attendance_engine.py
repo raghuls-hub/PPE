@@ -94,12 +94,11 @@ class AttendanceThread(threading.Thread):
         except (ValueError, TypeError):
             pass
 
-        cap = cv2.VideoCapture(src)
+        cap = cv2.VideoCapture(src, cv2.CAP_FFMPEG)
         if not cap.isOpened():
             self._upd(status="error", error=f"Cannot open: {self.stream}")
             return
 
-        # Optimization: Buffer size 1 to prevent lag
         cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
         self._upd(status="running")
         frame_n = 0
