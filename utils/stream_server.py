@@ -137,12 +137,26 @@ class MJPEGServer:
 
     def __init__(self, port: int = 8765):
         self.port = port
+        self.base_url = f"http://localhost:{port}"
+        self._try_expose_ngrok()
+        
         self._httpd = ThreadingHTTPServer(("0.0.0.0", port), _MJPEGHandler)
         self._thread = threading.Thread(
             target=self._httpd.serve_forever,
             daemon=True,
             name="MJPEGServer",
         )
+
+    def _try_expose_ngrok(self):
+        import os
+        if "COLAB_GPU" in os.environ or "COLAB_RELEASE_TAG" in os.environ:
+            try:
+                from pyngrok import ngrok
+                tunnel = ngrok.connect(self.port, bind_tls=True)
+                self.base_url = tunnel.public_url
+                print(f"🌐 Cloud Stream Server exposed over Ngrok at: {self.base_url}")
+            except Exception as e:
+                print(f"⚠️ Failed to wrap stream server with Ngrok: {e}")
 
     def start(self):
         self._thread.start()
@@ -158,7 +172,10 @@ class MJPEGServer:
         _MJPEGHandler.registry.pop(stream_id, None)
 
     def stream_url(self, stream_id: str) -> str:
-        return f"http://localhost:{self.port}/stream/{stream_id}"
+        return f"{self.base_url}/stream/{stream_id}"
+
+    def view_url(self, stream_id: str) -> str:
+        return f"{self.base_url}/view/{stream_id}"
 
     def is_running(self) -> bool:
         return self._thread.is_alive()

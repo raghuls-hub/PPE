@@ -151,7 +151,7 @@ def render():
 
                 # ── MJPEG iframe ──────────────────────────────────────────────
                 if is_on:
-                    stream_url = f"http://localhost:{STREAM_PORT}/view/{cid}?t={int(time.time())}"
+                    stream_url = server.view_url(cid) + f"?t={int(time.time())}"
                     # 16:9 height ≈ 56.25% of width — use fixed 320px height
                     st.markdown(
                         f'<iframe src="{stream_url}" width="100%" height="320" '

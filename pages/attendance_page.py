@@ -250,7 +250,8 @@ def _render_live_attendance():
     with feed_col:
         if running and t and t.is_alive():
             stream_key = f"attendance_{cam['_id']}"
-            stream_url = f"http://localhost:{STREAM_PORT}/view/{stream_key}?t={int(time.time())}"
+            server = get_stream_server(port=STREAM_PORT)
+            stream_url = server.view_url(stream_key) + f"?t={int(time.time())}"
 
             st.markdown(
                 f'<iframe src="{stream_url}" width="100%" height="380" '
