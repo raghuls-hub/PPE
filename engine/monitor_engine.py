@@ -136,13 +136,19 @@ class CameraMonitorThread(threading.Thread):
             _fall_state_obj.alert_cooldown_frames    = cfg.FALL_ALERT_COOLDOWN
 
         while not self._stop_evt.is_set():
+            if cap is None or not cap.isOpened():
+                print(f"[ENGINE] Attempting to reconnect {self.cam_name}...")
+                time.sleep(1)
+                cap = safe_open_video_capture(src)
+                if cap: cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+                continue
+
             ret, frame = cap.read()
             if not ret:
                 print(f"[ENGINE] Warning: cap.read() failed for {self.cam_name}. Retrying in 1s...")
                 time.sleep(1)
-                if cap: cap.release()
-                cap = safe_open_video_capture(src)
-                if cap: cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+                cap.release()
+                cap = None
                 continue
 
             frame_n += 1

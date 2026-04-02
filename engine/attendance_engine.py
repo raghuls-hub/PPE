@@ -99,9 +99,17 @@ class AttendanceThread(threading.Thread):
         _last_ppe_dets = []
 
         while not self._stop_evt.is_set():
+            if cap is None or not cap.isOpened():
+                time.sleep(1)
+                cap = safe_open_video_capture(src)
+                if cap: cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+                continue
+
             ret, frame = cap.read()
             if not ret:
                 time.sleep(1)
+                cap.release()
+                cap = None
                 continue
 
             frame = cv2.flip(frame, 1)
