@@ -250,14 +250,7 @@ def _render_live_attendance():
     with feed_col:
         if running and t and t.is_alive():
             stream_key = f"attendance_{cam['_id']}"
-            server = get_stream_server(port=STREAM_PORT)
-            stream_url = server.view_url(stream_key) + f"?t={int(time.time())}"
-
-            st.markdown(
-                f'<iframe src="{stream_url}" width="100%" height="380" '
-                f'style="border:none; border-radius:10px;" allowfullscreen></iframe>',
-                unsafe_allow_html=True,
-            )
+            frame_ph = st.empty()
 
             # Last-marked badge — refreshes on page interaction
             state = t.get_state()
@@ -323,6 +316,18 @@ def _render_live_attendance():
             st.dataframe(pd.DataFrame(rows), use_container_width=True)
         else:
             st.info("No records for selected date.")
+
+    # ── Live Rendering Loop ───────────────────────────────────────────────────
+    if running and t and t.is_alive() and locals().get("frame_ph"):
+        import cv2
+        while True:
+            state = t.get_state()
+            if state:
+                frame = state.get("frame")
+                if frame is not None:
+                    rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                    frame_ph.image(rgb, use_container_width=True)
+            time.sleep(0.05)
 
 
 

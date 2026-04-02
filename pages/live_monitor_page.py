@@ -149,15 +149,12 @@ def render():
                         unsafe_allow_html=True,
                     )
 
-                # ── MJPEG iframe ──────────────────────────────────────────────
+                # ── MJPEG iframe (Replaced with native Streamlit image) ──
                 if is_on:
-                    stream_url = server.view_url(cid) + f"?t={int(time.time())}"
-                    # 16:9 height ≈ 56.25% of width — use fixed 320px height
-                    st.markdown(
-                        f'<iframe src="{stream_url}" width="100%" height="320" '
-                        f'style="border:none; border-radius:4px;" allowfullscreen></iframe>',
-                        unsafe_allow_html=True,
-                    )
+                    if "active_placeholders" not in locals():
+                        active_placeholders = []
+                    frame_ph = st.empty()
+                    active_placeholders.append((cid, frame_ph))
                 else:
                     # Stopped placeholder
                     components.html(
@@ -207,3 +204,17 @@ def render():
                     if c2.button("Ack", key=f"ack_{a['_id']}"):
                         db.acknowledge_alert(a["_id"])
                         st.rerun()
+
+    # ── Live Rendering Loop ───────────────────────────────────────────────────
+    if locals().get("active_placeholders"):
+        import cv2
+        while True:
+            for cid, ph in active_placeholders:
+                state = engine.get_state(cid)
+                if state:
+                    frame = state.get("frame")
+                    if frame is not None:
+                        # Convert OpenCV BGR to RGB for Streamlit
+                        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                        ph.image(rgb, use_container_width=True)
+            time.sleep(0.05)
