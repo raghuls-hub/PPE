@@ -47,7 +47,7 @@ def _render_workers():
             emp_id = col1.text_input("Employee ID", placeholder="EMP-001")
             name   = col2.text_input("Full Name",   placeholder="John Doe")
             dept   = col3.text_input("Department",  placeholder="Operations")
-            submitted = st.form_submit_button("Add Worker", use_container_width=True)
+            submitted = st.form_submit_button("Add Worker", width="stretch")
             if submitted:
                 if not emp_id or not name:
                     st.error("Employee ID and Name are required.")
@@ -187,7 +187,7 @@ def _render_ppe_config():
 
     st.markdown("---")
     col1, col2 = st.columns([2, 6])
-    if col1.button("💾 Save PPE Config", type="primary", use_container_width=True):
+    if col1.button("💾 Save PPE Config", type="primary", width="stretch"):
         ok = db.set_required_ppe(selected)
         if ok:
             st.success(f"PPE requirements saved: **{', '.join(selected) if selected else 'None'}**")
@@ -214,7 +214,7 @@ def _render_live_attendance():
 
     col_start, col_stop, _ = st.columns([2, 2, 6])
 
-    if col_start.button("▶ Start Feed", type="primary", use_container_width=True):
+    if col_start.button("▶ Start Feed", type="primary", width="stretch"):
         # Stop any existing thread
         existing = _get_attendance_thread()
         if existing:
@@ -233,7 +233,7 @@ def _render_live_attendance():
             return lambda: th.get_state().get("frame") if th.get_state() else None
         server.register_stream(stream_key, make_provider())
 
-    if col_stop.button("⏹ Stop Feed", use_container_width=True):
+    if col_stop.button("⏹ Stop Feed", width="stretch"):
         t = _get_attendance_thread()
         if t:
             t.stop()
@@ -313,20 +313,28 @@ def _render_live_attendance():
                     "PPE OK": "✅" if r.get("ppe_ok") else "❌",
                     "Detected PPE": ", ".join(r.get("detected_ppe", [])),
                 })
-            st.dataframe(pd.DataFrame(rows), use_container_width=True)
+            st.dataframe(pd.DataFrame(rows), width="stretch")
         else:
             st.info("No records for selected date.")
 
     # ── Live Rendering Loop ───────────────────────────────────────────────────
     if running and t and t.is_alive() and locals().get("frame_ph"):
+        import cv2
+        import base64
         last_frame = None
         while True:
             state = t.get_state()
             if state:
                 frame = state.get("frame")
-                if frame is not None and frame != last_frame:
+                if frame is not None and frame is not last_frame:
                     last_frame = frame
-                    frame_ph.image(frame, width="stretch")
+                    ret, buffer = cv2.imencode('.jpg', frame)
+                    if ret:
+                        jpg_as_text = base64.b64encode(buffer).decode('utf-8')
+                        frame_ph.markdown(
+                            f'<img src="data:image/jpeg;base64,{jpg_as_text}" style="width:100%; object-fit:cover;">',
+                            unsafe_allow_html=True
+                        )
             time.sleep(0.03)
 
 

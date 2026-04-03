@@ -31,7 +31,7 @@ def render():
                                           ["monitor", "attendance"],
                                           format_func=lambda t: "🔍 Live Monitor" if t == "monitor" else "✅ Attendance")
 
-            submitted = st.form_submit_button("Add Camera", use_container_width=True)
+            submitted = st.form_submit_button("Add Camera", width="stretch")
             if submitted:
                 if not name or not stream_url:
                     st.error("Name and Stream URL are required.")

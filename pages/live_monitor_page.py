@@ -51,7 +51,7 @@ def render():
     ctrl_col1, ctrl_col2, *_ = st.columns([2, 2, 6])
 
     with ctrl_col1:
-        if st.button("▶ Start All", use_container_width=True, type="primary"):
+        if st.button("▶ Start All", width="stretch", type="primary"):
             for cam in cameras:
                 cid = cam["_id"]
                 engine.start_camera(cam)
@@ -62,7 +62,7 @@ def render():
             st.rerun()
 
     with ctrl_col2:
-        if st.button("⏹ Stop All", use_container_width=True):
+        if st.button("⏹ Stop All", width="stretch"):
             engine.stop_all()
             for cam in cameras:
                 server.unregister_stream(cam["_id"])
@@ -77,7 +77,7 @@ def render():
                 cid   = cam["_id"]
                 is_on = engine.is_running(cid)
                 label = f"{'🟢' if is_on else '🔴'} {cam['name']}"
-                if st.button(label, key=f"toggle_{cid}", use_container_width=True):
+                if st.button(label, key=f"toggle_{cid}", width="stretch"):
                     if is_on:
                         engine.stop_camera(cid)
                         server.unregister_stream(cid)
@@ -207,13 +207,23 @@ def render():
 
     # ── Live Rendering Loop ───────────────────────────────────────────────────
     if locals().get("active_placeholders"):
+        import cv2
+        import base64
         last_frames = {}
         while True:
             for cid, ph in active_placeholders:
                 state = engine.get_state(cid)
                 if state:
                     frame = state.get("frame")
-                    if frame is not None and frame != last_frames.get(cid):
+                    if frame is not None and frame is not last_frames.get(cid):
                         last_frames[cid] = frame
-                        ph.image(frame, width="stretch")
+                        
+                        # Use base64 to circumvent Streamlit's MediaFileStorageError under high update rates inside loops
+                        ret, buffer = cv2.imencode('.jpg', frame)
+                        if ret:
+                            jpg_as_text = base64.b64encode(buffer).decode('utf-8')
+                            ph.markdown(
+                                f'<img src="data:image/jpeg;base64,{jpg_as_text}" width="100%">',
+                                unsafe_allow_html=True
+                            )
             time.sleep(0.03)
