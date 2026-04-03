@@ -3,7 +3,14 @@ import streamlit as st
 import time
 import base64
 
+import config as cfg
+from services.ppe_service import PPEService
+
 st.set_page_config(page_title="Video Stream Debugger", layout="wide")
+
+@st.cache_resource
+def load_ppe_model():
+    return PPEService(cfg.PPE_MODEL_PATH)
 
 st.markdown("""
 <style>
@@ -139,6 +146,12 @@ if "frames" not in st.session_state:
     st.session_state.frames = 0
 if "start_time" not in st.session_state:
     st.session_state.start_time = None
+if "last_dets" not in st.session_state:
+    st.session_state.last_dets = []
+if "viol_count" not in st.session_state:
+    st.session_state.viol_count = 0
+if "ppe_alert" not in st.session_state:
+    st.session_state.ppe_alert = False
 
 url_input = st.text_input("STREAM URL", value=st.session_state.url, placeholder="rtsp://... or http://...")
 
@@ -152,6 +165,9 @@ if start_clicked and url_input:
     st.session_state.monitoring = True
     st.session_state.url = url_input
     st.session_state.frames = 0
+    st.session_state.viol_count = 0
+    st.session_state.ppe_alert = False
+    st.session_state.last_dets = []
     st.session_state.start_time = time.time()
     # Release any old capture
     if "cap" in st.session_state:
@@ -194,6 +210,34 @@ if st.session_state.monitoring and st.session_state.url:
             st.warning("⚠️ Stream dropped or ended — `cap.read()` returned False.")
             st.session_state.monitoring = False
         else:
+            # Run PPE inference using frame skipping and consecutive limits
+            ppe_svc = load_ppe_model()
+            
+            # Run Heavy YOLO Inference only every N frames
+            if st.session_state.frames % cfg.PROCESS_EVERY_N_FRAMES == 0:
+                dets = ppe_svc.detect_ppe(frame)
+                st.session_state.last_dets = dets
+                
+                # Check for consecutive violations
+                detected_classes = ppe_svc.get_detected_class_names(dets)
+                is_compliant, missing, _ = ppe_svc.verify_ppe(detected_classes, cfg.AVAILABLE_PPE_OPTIONS)
+                
+                if not is_compliant:
+                    st.session_state.viol_count += 1
+                else:
+                    st.session_state.viol_count = 0
+                    
+                st.session_state.ppe_alert = st.session_state.viol_count >= cfg.PPE_VIOLATION_THRESHOLD
+
+            # Always draw the most recently known boxes and alerts to keep video smooth
+            ppe_svc.draw_ppe_boxes(frame, st.session_state.last_dets)
+            
+            if st.session_state.ppe_alert:
+                h, w = frame.shape[:2]
+                cv2.rectangle(frame, (0, 0), (w, h), (0, 0, 220), 8)
+                cv2.putText(frame, "PPE VIOLATION", (20, h - 30),
+                            cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 0, 255), 3)
+
             # Bypass st.image() entirely — encode as base64 data URI and inject via markdown.
             # st.image() registers frames in Streamlit's MemoryMediaFileStorage and loses them
             # on fast reruns before the browser fetches them, causing MediaFileStorageError.
